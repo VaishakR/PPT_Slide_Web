@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload PPT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1 class="heading">PPT SLIDER</h1>
+
+    <!-- Instructions Section -->
+    <div class="instructions">
+        <h2>Instructions</h2>
+        <ol>
+            <li><strong>Upload</strong> – Drag and drop or click to upload your PPTX file.</li>
+            <li><strong>Confirm</strong> – Wait for the upload confirmation.</li>
+            <li><strong>Start</strong> – Open your presentation and control slides using <strong>hand gestures or voice commands </strong>by using <strong>"hey swipe"</strong>.</li>
+        </ol>
+    </div>
+
+    <div class="container">
+        <h2>Upload your PPT</h2>
+        <div id="drop-area" class="drop-box">
+            <p id="drop-text">Drag & Drop a PPTX file or Click to Upload</p>
+            <input type="file" id="fileInput" accept=".pptx" hidden>
+        </div>
+        <p id="fileName"></p>
+        <button id="startStopBtn" disabled>Start Presentation</button>
+    </div>
+
+    <script>
+        let uploadedFilePath = null;
+        let isPresentationActive = false;
+
+        document.getElementById("drop-area").addEventListener("click", function() {
+            document.getElementById("fileInput").click();
+        });
+
+        document.getElementById("fileInput").addEventListener("change", function(event) {
+            let file = event.target.files[0];
+            if (file && file.name.endsWith(".pptx")) {
+                uploadFile(file);
+            } else {
+                alert("Please upload a .pptx file.");
+            }
+        });
+
+        document.getElementById("drop-area").addEventListener("dragover", function(event) {
+            event.preventDefault();
+            this.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
+        });
+
+        document.getElementById("drop-area").addEventListener("dragleave", function() {
+            this.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
+        });
+
+        document.getElementById("drop-area").addEventListener("drop", function(event) {
+            event.preventDefault();
+            this.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
+
+            let file = event.dataTransfer.files[0];
+            if (file && file.name.endsWith(".pptx")) {
+                uploadFile(file);
+            } else {
+                alert("Please upload a .pptx file.");
+            }
+        });
+
+        function uploadFile(file) {
+            let formData = new FormData();
+            formData.append("file", file);
+
+            fetch("/upload", { method: "POST", body: formData })
+            .then(response => response.json())
+            .then(data => {
+                if (data.filename) {
+                    document.getElementById("drop-text").textContent = `Uploaded: ${data.filename}`;
+                    uploadedFilePath = data.filepath;
+                    document.getElementById("startStopBtn").disabled = false;
+                } else {
+                    alert(data.error);
+                }
+            });
+        }
+
+        document.getElementById("startStopBtn").addEventListener("click", function() {
+            if (!uploadedFilePath) return;
+
+            if (isPresentationActive) {
+                stopPresentation();
+            } else {
+                startPresentation();
+            }
+        });
+
+        function startPresentation() {
+            fetch("/start", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ filepath: uploadedFilePath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                isPresentationActive = true;
+                document.getElementById("startStopBtn").textContent = "Stop Presentation";
+            });
+        }
+
+        function stopPresentation() {
+            fetch("/stop", {
+                method: "POST",
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                isPresentationActive = false;
+                document.getElementById("startStopBtn").textContent = "Start Presentation";
+            });
+        }
+    </script>
+</body>
+</html>
